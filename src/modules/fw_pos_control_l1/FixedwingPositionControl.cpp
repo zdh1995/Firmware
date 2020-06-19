@@ -1718,6 +1718,21 @@ FixedwingPositionControl::Run()
 			}
 		}
 
+        /*
+         * if in mission mode , convert global setpoints to local setpoins
+         */
+        if (_pos_sp_triplet.current.valid)
+        {
+            if (!globallocalconverter_initialized()) {
+                globallocalconverter_init(_local_pos.ref_lat, _local_pos.ref_lon,
+                              _local_pos.ref_alt, _local_pos.ref_timestamp);
+
+            } else {
+                globallocalconverter_tolocal(_pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,_pos_sp_triplet.current.alt,
+                                 &_pos_sp_triplet.current.x, &_pos_sp_triplet.current.y, &_pos_sp_triplet.current.z);
+            }
+        }
+
 		/*
 		 * Attempt to control position, on success (= sensors present and not in manual mode),
 		 * publish setpoint.
