@@ -1726,6 +1726,8 @@ FixedwingPositionControl::Run()
             if (!globallocalconverter_initialized()) {
                 globallocalconverter_init(_local_pos.ref_lat, _local_pos.ref_lon,
                               _local_pos.ref_alt, _local_pos.ref_timestamp);
+                globallocalconverter_tolocal(_pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,_pos_sp_triplet.current.alt,
+                                 &_pos_sp_triplet.current.x, &_pos_sp_triplet.current.y, &_pos_sp_triplet.current.z);
 
             } else {
                 globallocalconverter_tolocal(_pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,_pos_sp_triplet.current.alt,

@@ -2781,7 +2781,7 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 				if (new_mode == commander_state_s::MAIN_STATE_AUTO_MISSION) {
 
 					/* fall back to loiter */
-					new_mode = commander_state_s::MAIN_STATE_AUTO_LOITER;
+                    new_mode = commander_state_s::MAIN_STATE_STAB;
 					print_reject_mode("AUTO MISSION");
 					res = main_state_transition(status_local, new_mode, status_flags, &internal_state);
 

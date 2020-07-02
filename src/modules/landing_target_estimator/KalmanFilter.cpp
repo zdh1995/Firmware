@@ -118,7 +118,7 @@ bool KalmanFilter::update(float meas, float measUnc)
 
 	_covariance = (identity - KH) * _covariance;
 
-	return true;
+    return true;
 
 }
 
