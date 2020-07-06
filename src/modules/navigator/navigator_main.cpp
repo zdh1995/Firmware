@@ -720,6 +720,22 @@ void
 Navigator::publish_position_setpoint_triplet()
 {
 	_pos_sp_triplet.timestamp = hrt_absolute_time();
+    /*
+     * if in mission mode , convert global setpoints to local setpoins
+     */
+    if (_pos_sp_triplet.current.valid)
+    {
+        if (!globallocalconverter_initialized()) {
+            globallocalconverter_init(_local_pos.ref_lat, _local_pos.ref_lon,
+                          _local_pos.ref_alt, _local_pos.ref_timestamp);
+            globallocalconverter_tolocal(_pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,_pos_sp_triplet.current.alt,
+                             &_pos_sp_triplet.current.x, &_pos_sp_triplet.current.y, &_pos_sp_triplet.current.z);
+
+        } else {
+            globallocalconverter_tolocal(_pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,_pos_sp_triplet.current.alt,
+                             &_pos_sp_triplet.current.x, &_pos_sp_triplet.current.y, &_pos_sp_triplet.current.z);
+        }
+    }
 	_pos_sp_triplet_pub.publish(_pos_sp_triplet);
 	_pos_sp_triplet_updated = false;
 }
