@@ -196,6 +196,8 @@ private:
 	float	_althold_epv{0.0f};				///< the position estimate accuracy when engaging alt hold */
 	bool	_was_in_deadband{false};			///< wether the last stick input was in althold deadband */
 
+    bool	switch_avoi{true};			///<switch for aovidance test
+
 	position_setpoint_s _hdg_hold_prev_wp {};		///< position where heading hold started */
 	position_setpoint_s _hdg_hold_curr_wp {};		///< position to which heading hold flies */
 

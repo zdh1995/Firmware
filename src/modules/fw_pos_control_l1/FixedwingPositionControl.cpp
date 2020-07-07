@@ -849,7 +849,23 @@ FixedwingPositionControl::control_position(const Vector2f &curr_pos, const Vecto
 			_att_sp.roll_body = 0.0f;
 			_att_sp.pitch_body = 0.0f;
 
-		} else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
+        }  else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_AVOIDANCE)
+        {
+                _l1_control.navigate_waypoints(prev_wp, curr_wp, curr_pos, nav_speed_2d);
+                _att_sp.roll_body = -math::radians(90.0f);
+                _att_sp.yaw_body = math::radians(90.0f);
+                //_att_sp.roll_body = _l1_control.get_roll_setpoint();
+                //_att_sp.yaw_body = _l1_control.nav_bearing();
+                tecs_update_pitch_throttle(pos_sp_curr.alt,
+                               calculate_target_airspeed(mission_airspeed, ground_speed),
+                               radians(_parameters.pitch_limit_min) - _parameters.pitchsp_offset_rad,
+                               radians(_parameters.pitch_limit_max) - _parameters.pitchsp_offset_rad,
+                               _parameters.throttle_min,
+                               _parameters.throttle_max,
+                               mission_throttle,
+                               false,
+                               radians(_parameters.pitch_limit_min));
+        } else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
 			/* waypoint is a plain navigation waypoint */
 			_l1_control.navigate_waypoints(prev_wp, curr_wp, curr_pos, nav_speed_2d);
 			_att_sp.roll_body = _l1_control.get_roll_setpoint();
@@ -1651,10 +1667,10 @@ FixedwingPositionControl::Run()
 	if (should_exit()) {
 		_global_pos_sub.unregisterCallback();
 		exit_and_cleanup();
-		return;
-	}
+        return;
+    }
 
-	perf_begin(_loop_perf);
+    perf_begin(_loop_perf);
 
 	/* only run controller if position changed */
 	if (_global_pos_sub.update(&_global_pos)) {
@@ -1693,7 +1709,7 @@ FixedwingPositionControl::Run()
 		_pos_reset_counter = _global_pos.lat_lon_reset_counter;
 
 		airspeed_poll();
-		_manual_control_sub.update(&_manual);
+        _manual_control_sub.update(&_manual);
 		_pos_sp_triplet_sub.update(&_pos_sp_triplet);
 		vehicle_attitude_poll();
 		vehicle_command_poll();
@@ -1704,7 +1720,15 @@ FixedwingPositionControl::Run()
 		_vehicle_rates_sub.update();
 
 		Vector2f curr_pos((float)_global_pos.lat, (float)_global_pos.lon);
-		Vector2f ground_speed(_global_pos.vel_n, _global_pos.vel_e);
+        Vector2f ground_speed(_global_pos.vel_n, _global_pos.vel_e);
+
+        //virtual obstacle_avoidance
+        if (switch_avoi && _manual.aux5 > 0.08f){
+            switch_avoi = false;
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE;
+            mavlink_log_critical(&_mavlink_log_pub, "obstacle avoidance test");
+        }
+
 
 		//Convert Local setpoints to global setpoints
 		if (_control_mode.flag_control_offboard_enabled) {
@@ -1986,7 +2010,7 @@ fw_pos_control_l1 is the fixed wing position controller.
 
 int FixedwingPositionControl::print_status()
 {
-	PX4_INFO("Running");
+    PX4_INFO("Running");
 
 	perf_print_counter(_loop_perf);
 
