@@ -19,26 +19,15 @@
 #include <uORB/topics/distance_sensor.h>
 #include <systemlib/mavlink_log.h>
 
-#define MSG_TYPE          0xfa
-#define MSG_CODE          0x01
-#define BRDIDH            0xff
-#define BRDIDL            0xff
-#define TRANSIDH          0x00
-#define TRANSIDL          0x00
-#define PAYLOADLENL       0x00
-#define PAYLOADLENH       0x04
-#define MEATYPEL          0x00
-#define MEATYPEH          0x01
-#define MEATIMEH          0x00
-#define MEATIMEL          0x00
+
 static bool thread_should_exit = false; /**< Deamon exit flag */
 static bool thread_running = false; /**< Deamon status flag */
-static int laser_it03_task; /**< Handle of deamon task / thread */
+static int laser_M88_task; /**< Handle of deamon task / thread */
 
-__EXPORT int laser_it03_main(int argc, char *argv[]);
+__EXPORT int laser_M88_main(int argc, char *argv[]);
 
 static int uart_init(char * uart_name);
-static int laser_it03_thread_main(int argc, char *argv[]);
+static int laser_M88_thread_main(int argc, char *argv[]);
 static int set_uart_baudrate(const int fd, unsigned int baud);
 static void usage(const char * reason);
 
@@ -46,22 +35,15 @@ static void usage(const char * reason);
 orb_advert_t	_mavlink_log_pub;
 
 static const uint8_t measure_start[] = {
-	MSG_TYPE,
-	MSG_CODE,
-	BRDIDH,
-	BRDIDL,
-	TRANSIDH,
-	TRANSIDL,
-	PAYLOADLENH,
-	PAYLOADLENL,
-	MEATYPEH,
-	MEATYPEL,
-	MEATIMEH,
-	MEATIMEL,
-	0xff, /*CRC*/
-	0x9b, /*CRC*/
-	0x85, /*CRC*/
-	0x04 /*CRC*/
+	0xAA,
+	0x00,
+	0x00,
+	0x20,
+	0x00,
+	0x01,
+	0x00,
+	0x06,
+	0x27
 };
 
 int set_uart_baudrate(const int fd, unsigned int baud)
@@ -141,7 +123,7 @@ static void usage(const char * reason)
 	fprintf(stderr,"usage: position_estimator_inav {start|stop|status} [-v]\n");
 }
 
-int laser_it03_main(int argc, char *argv[])
+int laser_M88_main(int argc, char *argv[])
 {
 	if (argc < 2) {
 		usage("missing command");
@@ -152,9 +134,9 @@ int laser_it03_main(int argc, char *argv[])
 			return 0;		
 		}
 		thread_should_exit = false ;
-		laser_it03_task = px4_task_spawn_cmd("laser_it03",
+		laser_M88_task = px4_task_spawn_cmd("laser_M88",
                                           SCHED_DEFAULT, SCHED_PRIORITY_MAX - 5, 2000,
-                                          laser_it03_thread_main,
+                                          laser_M88_thread_main,
                                           (argv) ? (char *const *) &argv[2] : (char *const *) NULL);
 		return 0;
 	}
@@ -185,15 +167,15 @@ int laser_it03_main(int argc, char *argv[])
 	return 1;
 }
 
-int laser_it03_thread_main(int argc, char *argv[])
+int laser_M88_thread_main(int argc, char *argv[])
 {
-	uint8_t data[24];
-	uint8_t backcall[16];
+	uint8_t data[13];
+//	uint8_t backcall[16];
 	int distance;
 	int ret;
 	float distance_m;
-	unsigned int t1, t2,valid1,valid2;
-	int i,num1=0,num2=0,num3=0,num4=0;
+	unsigned int t1, t2;
+	int i;
     //double distance_m;
 	  /*
 	     * TELEM1 : /dev/ttyS1
@@ -207,7 +189,7 @@ int laser_it03_thread_main(int argc, char *argv[])
 	int uart_read = uart_init("/dev/ttyS3");
 	if(false == uart_read)
 		return -1;
-	if(false == set_uart_baudrate(uart_read,115200)){
+	if(false == set_uart_baudrate(uart_read,19200)){
 		printf("set_uart_baudrate is failed\n");
 		return -1;
 	}
@@ -219,100 +201,66 @@ int laser_it03_thread_main(int argc, char *argv[])
 
 	orb_advert_t distance_sensor_pub = orb_advertise(ORB_ID(distance_sensor),&report);
 	
-backcall[8] = 1;
+
 	//MEASURE START
-while (backcall[8] != 0)
-{
+
+
+
 	ret = write(uart_read,measure_start,sizeof(measure_start));
 	if (ret <0)
 	{
 		mavlink_log_critical(&_mavlink_log_pub, "laser initial err");
 		thread_should_exit = true;
 	}
-	//printf("test\n");
-	for (i=0;i<16;i++)
-		{
-			ret = read(uart_read,&backcall[i],1);
-		}
-	/*
-	if (backcall[8] == 1)
-	{
-		mavlink_log_critical(&_mavlink_log_pub, "laser battery low");
-		//thread_should_exit = true;
-	}
-	else if (backcall[8] == 3 || backcall[8] == 4)
-	{
-		mavlink_log_critical(&_mavlink_log_pub, "laser temperature high / low");
-		//thread_should_exit = true;
-	}
-	else if (backcall[8] == 5)
-	{
-		mavlink_log_critical(&_mavlink_log_pub, "laser battery high");
-		//thread_should_exit = true;
-	}
-	else if (backcall[8] > 0)
-	{
-		mavlink_log_critical(&_mavlink_log_pub, "laser err, please restart");
-		//thread_should_exit = true;
-	}
-	*/
-}
+	printf("test\n");
+	distance = 0;
     while (!thread_should_exit){
 
-		//ret = read(uart_read,&data,sizeof(data));
-		for (i=0;i<24;i++)
+		ret = read(uart_read,&data[0],1);
+		printf("circle");
+		if (data[0] == 0xaa)
 		{
-			ret = read(uart_read,&data[i],1);
-		}
-		for (i=0;i<23;i++)
-		{
-		  if (data[i] == 0xfb && data[i+1] == 3)
-		  {
-			num1 = (i+8) % 24;
-			num2 = (i+9) % 24;
-			num3 = (i+10) % 24;
-			num4 = (i+11) % 24;
-			break;
-		  }
-		}
-		if (i == 23)
-		{
-			continue;
-		}
-		valid1 = data[num1];
-		valid2 = data[num2];
-		if (valid1 == 0 && valid2 == 0)
-		{
-			t1 = data[num3];
-			t2 = data[num4];
+			for (i=1;i<13;i++)
+			{
+				ret = read(uart_read,&data[i],1);
+			}
+			t1 = data[9];
+			t2 = data[8];
 			t2 <<= 8;
 			t2 += t1;	
 			distance=t2;
-			distance_m = (float) distance / 100;
+			distance_m = (float) distance / 1000;
 			report.current_distance = distance_m;
 			report.max_distance=16.00f;
 			report.min_distance=0.05f;
+			report.variance = (data[10] << 8) + data[11];
 			report.timestamp=hrt_absolute_time();
 
 			orb_publish(ORB_ID(distance_sensor),distance_sensor_pub,&report);	    
-			//printf("distance: %f\n",(double)distance_m);
-		}
-		else if (valid1 == 1)  // out of range
+			printf("distance: %f, confidence: %f\n",(double)distance_m, (double)report.variance);
+		}else if (data[0] == 0xee)
 		{
-			report.current_distance = -1;
+			for (i=1;i<9;i++)
+			{
+				ret = read(uart_read,&data[i],1);
+			}
+			printf("err: %d\n",data[7]);
+			report.current_distance = 100;
 			report.max_distance=16.00f;
 			report.min_distance=0.05f;
 			report.timestamp=hrt_absolute_time();
 			orb_publish(ORB_ID(distance_sensor),distance_sensor_pub,&report);
+
+
+			if (data[7] == 7)
+			{
+				ret = write(uart_read,measure_start,sizeof(measure_start));
+			}
 		}
 		else
 		{
-			report.current_distance = -2;
-			report.max_distance=16.00f;
-			report.min_distance=0.05f;
-			report.timestamp=hrt_absolute_time();
-
-			orb_publish(ORB_ID(distance_sensor),distance_sensor_pub,&report);
+			printf("unknowm: %d\n",data[0]);
+			ret = write(uart_read,measure_start,sizeof(measure_start));
 		}
 
     	}

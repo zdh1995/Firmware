@@ -586,9 +586,9 @@ private:
 
 	int			_uart_fd{-1};
 
-	int			_baudrate{57600};
+    int			_baudrate{9600};
 	int			_datarate{1000};		///< data rate for normal streams (attitude, position, etc.)
-	float			_rate_mult{1.0f};
+    float			_rate_mult{1.0f};
 
 	bool			_radio_status_available{false};
 	bool			_radio_status_critical{false};

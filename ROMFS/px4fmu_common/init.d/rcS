@@ -505,6 +505,10 @@ else
 		param save
 		reboot
 	fi
+	#
+	# Start the laser.
+	#
+	#laser_M88 start
 
 #
 # End of autostart.

@@ -99,6 +99,10 @@ FixedwingPositionControl::FixedwingPositionControl() :
 	_parameter_handles.heightrate_ff = param_find("FW_T_HRATE_FF");
 	_parameter_handles.speedrate_p = param_find("FW_T_SRATE_P");
 
+    _parameter_handles.avoid_time = param_find("FW_AVOID_T");
+    _parameter_handles.straight_time = param_find("FW_STRAIGHT_T");
+    _parameter_handles.dis_toleration = param_find("FW_DIS_TOLE");
+
 	// if vehicle is vtol these handles will be set when we get the vehicle status
 	_parameter_handles.airspeed_trans = PARAM_INVALID;
 	_parameter_handles.vtol_type = PARAM_INVALID;
@@ -165,6 +169,11 @@ FixedwingPositionControl::parameters_update()
 	param_get(_parameter_handles.land_early_config_change, &(_parameters.land_early_config_change));
 	param_get(_parameter_handles.land_airspeed_scale, &(_parameters.land_airspeed_scale));
 	param_get(_parameter_handles.land_throtTC_scale, &(_parameters.land_throtTC_scale));
+
+    //AVOID
+    param_get(_parameter_handles.avoid_time, &(_parameters.avoid_time));
+    param_get(_parameter_handles.straight_time, &(_parameters.straight_time));
+    param_get(_parameter_handles.dis_toleration, &(_parameters.dis_toleration));
 
 	// VTOL parameter VTOL_TYPE
 	if (_parameter_handles.vtol_type != PARAM_INVALID) {
@@ -852,8 +861,22 @@ FixedwingPositionControl::control_position(const Vector2f &curr_pos, const Vecto
         }  else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_AVOIDANCE)
         {
                 _l1_control.navigate_waypoints(prev_wp, curr_wp, curr_pos, nav_speed_2d);
-                _att_sp.roll_body = -math::radians(90.0f);
-                _att_sp.yaw_body = math::radians(90.0f);
+                _att_sp.roll_body = -math::radians(45.0f);
+                //_att_sp.roll_body = _l1_control.get_roll_setpoint();
+                //_att_sp.yaw_body = _l1_control.nav_bearing();
+                tecs_update_pitch_throttle(pos_sp_curr.alt,
+                               calculate_target_airspeed(mission_airspeed, ground_speed),
+                               radians(_parameters.pitch_limit_min) - _parameters.pitchsp_offset_rad,
+                               radians(_parameters.pitch_limit_max) - _parameters.pitchsp_offset_rad,
+                               _parameters.throttle_min,
+                               _parameters.throttle_max,
+                               mission_throttle,
+                               false,
+                               radians(_parameters.pitch_limit_min));
+        }else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_AVOIDANCE_STRAIGHT)
+        {
+                _l1_control.navigate_waypoints(prev_wp, curr_wp, curr_pos, nav_speed_2d);
+                _att_sp.roll_body = 0;
                 //_att_sp.roll_body = _l1_control.get_roll_setpoint();
                 //_att_sp.yaw_body = _l1_control.nav_bearing();
                 tecs_update_pitch_throttle(pos_sp_curr.alt,
@@ -1670,6 +1693,8 @@ FixedwingPositionControl::Run()
         return;
     }
 
+    _distance.current_distance = 200;
+
     perf_begin(_loop_perf);
 
 	/* only run controller if position changed */
@@ -1718,15 +1743,44 @@ FixedwingPositionControl::Run()
 		vehicle_status_poll();
 		_vehicle_acceleration_sub.update();
 		_vehicle_rates_sub.update();
+        _distance_sensor_sub.update(&_distance);
 
 		Vector2f curr_pos((float)_global_pos.lat, (float)_global_pos.lon);
         Vector2f ground_speed(_global_pos.vel_n, _global_pos.vel_e);
 
         //virtual obstacle_avoidance
+        now_time = hrt_absolute_time() / 1000000;
+        /*
         if (switch_avoi && _manual.aux5 > 0.08f){
+            begin_time = now_time;
             switch_avoi = false;
             _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE;
+            mavlink_log_critical(&_mavlink_log_pub, "obstacle avoidance");
+        }else if (!switch_avoi && (now_time - begin_time) < _parameters.avoid_time)
+        {
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE;
+        }else if (!switch_avoi && (now_time - begin_time) < _parameters.avoid_time + _parameters.straight_time)
+        {
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE_STRAIGHT;
+        }
+        else
+        {
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
+        }*/
+
+        // obstacle avoidance
+        if (_distance.current_distance < _parameters.dis_toleration)
+        {
+            begin_time = now_time;
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE;
             mavlink_log_critical(&_mavlink_log_pub, "obstacle avoidance test");
+        }else if ((now_time - begin_time) < _parameters.straight_time)
+        {
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE_STRAIGHT;
+        }
+        else
+        {
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
         }
 
 

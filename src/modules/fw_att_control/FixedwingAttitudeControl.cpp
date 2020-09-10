@@ -305,6 +305,15 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 					_att_sp.pitch_body = math::constrain(_att_sp.pitch_body, -_parameters.man_pitch_max, _parameters.man_pitch_max);
 					_att_sp.yaw_body = 0.0f;
 					_att_sp.thrust_body[0] = _manual.z;
+                    if (_distance_detect)
+                    {
+                        _att_sp.roll_body = -0.9f * _parameters.man_roll_max + _parameters.rollsp_offset_rad;
+                        _att_sp.roll_body = math::constrain(_att_sp.roll_body, -_parameters.man_roll_max, _parameters.man_roll_max);
+                    }
+
+                    data_back.data = _att_sp.roll_body;
+                    _data_back_pub.publish(data_back);
+
 
 					Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
 					q.copyTo(_att_sp.q_d);
@@ -446,6 +455,7 @@ void FixedwingAttitudeControl::Run()
 		exit_and_cleanup();
 		return;
 	}
+    _distance.current_distance = 100;
 
 	perf_begin(_loop_perf);
 
@@ -523,6 +533,21 @@ void FixedwingAttitudeControl::Run()
 
 		const matrix::Eulerf euler_angles(R);
 
+        // obstacle avoidance
+        /*
+        now_time = hrt_absolute_time() / 1000000;
+        _distance_sensor_sub.update(&_distance);
+        if (_distance.current_distance < 52 && _manual.aux5 > 0.08f)
+        {
+            _distance_detect = true;
+            begin_time = now_time;
+            mavlink_log_critical(&_mavlink_log_pub, "obstacle avoidance test");
+        }
+        else if (now_time - begin_time > 2.0 || _manual.aux5 < 0.08f)
+        {
+            _distance_detect = false;
+        }*/
+
 		vehicle_attitude_setpoint_poll();
 		vehicle_status_poll(); // this poll has to be before the control_mode_poll, otherwise rate sp are not published during whole transition
 		vehicle_control_mode_poll();
@@ -530,7 +555,7 @@ void FixedwingAttitudeControl::Run()
 		_global_pos_sub.update(&_global_pos);
 		vehicle_land_detected_poll();
 
-		// the position controller will not emit attitude setpoints in some modes
+        // the position controller will not emit attitude setpoints in some modes
 		// we need to make sure that this flag is reset
 		_att_sp.fw_control_yaw = _att_sp.fw_control_yaw && _vcontrol_mode.flag_control_auto_enabled;
 

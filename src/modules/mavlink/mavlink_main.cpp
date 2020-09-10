@@ -1826,12 +1826,12 @@ int
 Mavlink::task_main(int argc, char *argv[])
 {
 	int ch;
-	_baudrate = 57600;
+    _baudrate = 9600;
 	_datarate = 0;
 	_mode = MAVLINK_MODE_COUNT;
 	bool _force_flow_control = false;
 
-	_interface_name = nullptr;
+    _interface_name = nullptr;
 
 #ifdef __PX4_NUTTX
 	/* the NuttX optarg handler does not

@@ -65,6 +65,9 @@
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/distance_sensor.h>
+#include <systemlib/mavlink_log.h>
+#include <uORB/topics/data_back.h>
 
 using matrix::Eulerf;
 using matrix::Quatf;
@@ -94,6 +97,7 @@ public:
 	bool init();
 
 private:
+    orb_advert_t	_mavlink_log_pub{nullptr};
 
 	uORB::SubscriptionCallbackWorkItem _att_sub{this, ORB_ID(vehicle_attitude)};	/**< vehicle attitude */
 
@@ -107,12 +111,14 @@ private:
 	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};	/**< vehicle land detected subscription */
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};			/**< vehicle status subscription */
 	uORB::Subscription _vehicle_rates_sub{ORB_ID(vehicle_angular_velocity)};
+    uORB::Subscription _distance_sensor_sub{ORB_ID(distance_sensor)};			///< distance sensor */
 
 	uORB::SubscriptionData<airspeed_s> _airspeed_sub{ORB_ID(airspeed)};
 
 	uORB::Publication<actuator_controls_s>		_actuators_2_pub{ORB_ID(actuator_controls_2)};		/**< actuator control group 1 setpoint (Airframe) */
 	uORB::Publication<vehicle_rates_setpoint_s>	_rate_sp_pub{ORB_ID(vehicle_rates_setpoint)};		/**< rate setpoint publication */
 	uORB::PublicationMulti<rate_ctrl_status_s>	_rate_ctrl_status_pub{ORB_ID(rate_ctrl_status)};	/**< rate controller status publication */
+    uORB::Publication<data_back_s>	_data_back_pub{ORB_ID(data_back)};
 
 	orb_id_t	_attitude_setpoint_id{nullptr};
 	orb_advert_t	_attitude_sp_pub{nullptr};	/**< attitude setpoint point */
@@ -129,6 +135,8 @@ private:
 	vehicle_global_position_s		_global_pos {};		/**< global position */
 	vehicle_rates_setpoint_s		_rates_sp {};		/* attitude rates setpoint */
 	vehicle_status_s			_vehicle_status {};	/**< vehicle status */
+    distance_sensor_s      _distance {};          ///< distance */
+    data_back_s data_back{};
 
 	perf_counter_t	_loop_perf;			/**< loop performance counter */
 
@@ -144,6 +152,10 @@ private:
 	bool _flag_control_attitude_enabled_last{false};
 
 	bool _is_tailsitter{false};
+
+    bool _distance_detect{false};
+    double now_time;
+    double begin_time;
 
 	struct {
 		float p_tc;

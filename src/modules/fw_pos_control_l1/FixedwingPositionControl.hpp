@@ -87,6 +87,7 @@
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/distance_sensor.h>
 #include <uORB/uORB.h>
 #include <vtol_att_control/vtol_type.h>
 
@@ -163,6 +164,7 @@ private:
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};		///< vehicle command subscription */
 	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};	///< vehicle land detected subscription */
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};			///< vehicle status subscription */
+    uORB::Subscription _distance_sensor_sub{ORB_ID(distance_sensor)};			///< distance sensor */
 	uORB::SubscriptionData<vehicle_angular_velocity_s>	_vehicle_rates_sub{ORB_ID(vehicle_angular_velocity)};
 
 	orb_advert_t	_attitude_sp_pub{nullptr};		///< attitude setpoint */
@@ -182,6 +184,7 @@ private:
 	vehicle_local_position_s	_local_pos {};			///< vehicle local position */
 	vehicle_land_detected_s		_vehicle_land_detected {};	///< vehicle land detected */
 	vehicle_status_s		_vehicle_status {};		///< vehicle status */
+    distance_sensor_s      _distance {};          ///< distance */
 
 	SubscriptionData<airspeed_s>			_airspeed_sub{ORB_ID(airspeed)};
 	SubscriptionData<vehicle_acceleration_s>	_vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
@@ -196,7 +199,9 @@ private:
 	float	_althold_epv{0.0f};				///< the position estimate accuracy when engaging alt hold */
 	bool	_was_in_deadband{false};			///< wether the last stick input was in althold deadband */
 
-    bool	switch_avoi{true};			///<switch for aovidance test
+    bool	switch_avoi{true};			///<switch for avoidance test
+    float   begin_time;                 ///start time of avoidance mode
+    float   now_time;
 
 	position_setpoint_s _hdg_hold_prev_wp {};		///< position where heading hold started */
 	position_setpoint_s _hdg_hold_curr_wp {};		///< position to which heading hold flies */
@@ -309,6 +314,11 @@ private:
 		// VTOL
 		float airspeed_trans;
 		int32_t vtol_type;
+
+        // AVOID
+        float avoid_time;
+        float straight_time;
+        float dis_toleration;
 	} _parameters{};					///< local copies of interesting parameters */
 
 	struct {
@@ -372,6 +382,10 @@ private:
 		param_t land_throtTC_scale;
 
 		param_t vtol_type;
+
+        param_t avoid_time;
+        param_t straight_time;
+        param_t dis_toleration;
 	} _parameter_handles {};				///< handles for interesting parameters */
 
 	DEFINE_PARAMETERS(

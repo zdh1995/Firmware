@@ -742,3 +742,36 @@ PARAM_DEFINE_FLOAT(FW_T_SRATE_P, 0.02f);
  * @group FW TECS
  */
 PARAM_DEFINE_FLOAT(FW_GND_SPD_MIN, 5.0f);
+/**
+ * the time for turning
+ *
+ * force the aircraft turn left/right at full roll angle for this value
+ *
+ * @unit s
+ * @min 0.0
+ * @max 10
+ * @group FW L1 control
+ */
+PARAM_DEFINE_FLOAT(FW_AVOID_T, 2.0f);
+/**
+ * the time for keep straight
+ *
+ * force the aircraft keep straight on current direction for this value
+ *
+ * @unit s
+ * @min 0.0
+ * @max 10
+ * @group FW L1 control
+ */
+PARAM_DEFINE_FLOAT(FW_STRAIGHT_T, 2.0f);
+/**
+ * the torerable distance to obstacle
+ *
+ * 
+ *
+ * @unit m
+ * @min 0.0
+ * @max 100
+ * @group FW L1 control
+ */
+PARAM_DEFINE_FLOAT(FW_DIS_TOLE, 40.0f);

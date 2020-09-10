@@ -46,6 +46,7 @@ set(msg_files
 	collision_constraints.msg
 	commander_state.msg
 	cpuload.msg
+	data_back.msg
 	debug_array.msg
 	debug_key_value.msg
 	debug_value.msg

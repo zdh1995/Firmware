@@ -11,6 +11,7 @@ uint8 SETPOINT_TYPE_IDLE=5	# do nothing, switch off motors or keep at idle speed
 uint8 SETPOINT_TYPE_OFFBOARD=6 	# setpoint in NED frame (x, y, z, vx, vy, vz) set by offboard
 uint8 SETPOINT_TYPE_FOLLOW_TARGET=7  # setpoint in NED frame (x, y, z, vx, vy, vz) set by follow target
 uint8 SETPOINT_TYPE_AVOIDANCE=8  # avoidance setpoint
+uint8 SETPOINT_TYPE_AVOIDANCE_STRAIGHT = 9
 
 
 uint8 VELOCITY_FRAME_LOCAL_NED = 1 # MAV_FRAME_LOCAL_NED
