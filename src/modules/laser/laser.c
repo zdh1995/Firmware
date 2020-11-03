@@ -169,7 +169,7 @@ int laser_main(int argc, char *argv[])
 int laser_thread_main(int argc, char *argv[])
 {
 	uint8_t data[13];
-//	uint8_t backcall[16];
+	uint8_t backcall;
 	int distance;
 	int ret;
 	float distance_m;
@@ -188,7 +188,7 @@ int laser_thread_main(int argc, char *argv[])
 	int uart_read = uart_init("/dev/ttyS2");
 	if(false == uart_read)
 		return -1;
-	if(false == set_uart_baudrate(uart_read,9600)){
+	if(false == set_uart_baudrate(uart_read,115200)){
 		printf("set_uart_baudrate is failed\n");
 		return -1;
 	}
@@ -215,10 +215,15 @@ int laser_thread_main(int argc, char *argv[])
 	distance = 0;
     while (!thread_should_exit){
 
-		for (i=0;i<8;i++)
+		backcall = 0;
+		for (i=0;i<7;i++)
 		{
 			ret = read(uart_read,&data[i],1);
+			backcall = backcall + data[i];
 		}
+		ret = read(uart_read,&data[7],1);
+		if (backcall == data[7])
+		{
 		if (data[3] == 0x01)
 		{
 			t1 = data[6];
@@ -236,18 +241,25 @@ int laser_thread_main(int argc, char *argv[])
 			printf("distance: %f\n",(double)distance_m);
 		}else 
 		{
-			t1 = data[6];
-			t2 = data[5];
-			t2 <<= 8;
-			t2 += t1;
-			report.current_distance = 200;
+			if (data[6] == 0x00)
+			{
+				t1 = data[6];
+				t2 = data[5];
+				t2 <<= 8;
+				t2 += t1;
+				report.current_distance = 256;			
+			}else
+			{
+				t2 = 256;
+				report.current_distance = 200;
+			}		
 			report.max_distance=2000.00f;
 			report.min_distance=10.0f;
 			report.timestamp=hrt_absolute_time();
 			orb_publish(ORB_ID(distance_sensor),distance_sensor_pub,&report);
-			printf("err:%f\n",t2);
+			printf("err:%d\n",t2);
 		}
-
+		}
     	}
 	warnx("exiting");
 	thread_running = false;

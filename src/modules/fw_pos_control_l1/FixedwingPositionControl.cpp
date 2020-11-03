@@ -873,6 +873,7 @@ FixedwingPositionControl::control_position(const Vector2f &curr_pos, const Vecto
                                mission_throttle,
                                false,
                                radians(_parameters.pitch_limit_min));
+                mavlink_log_critical(&_mavlink_log_pub, "obstacle avoidance");
         }else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_AVOIDANCE_STRAIGHT)
         {
                 _l1_control.navigate_waypoints(prev_wp, curr_wp, curr_pos, nav_speed_2d);
@@ -1197,6 +1198,10 @@ FixedwingPositionControl::control_position(const Vector2f &curr_pos, const Vecto
 
 	if (use_tecs_pitch) {
 		_att_sp.pitch_body = get_tecs_pitch();
+        if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_AVOIDANCE || pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_AVOIDANCE_STRAIGHT)
+        {
+            _att_sp.pitch_body = 0;
+        }
 	}
 
 	if (_control_mode.flag_control_position_enabled) {
@@ -1769,14 +1774,35 @@ FixedwingPositionControl::Run()
         }*/
 
         // obstacle avoidance
-        if (_distance.current_distance < _parameters.dis_toleration)
+
+        if (switch_avoi && _manual.aux5 > 0.08f){
+            begin_time = now_time;
+            switch_avoi = false;
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE;
+            mavlink_log_critical(&_mavlink_log_pub, "obstacle avoidance");
+        }
+
+        float distance_to_ground = abs(_local_pos.z / (float)sin(_pitch));
+
+        if (_distance.current_distance < _parameters.dis_toleration && !(_pitch < 0 && distance_to_ground < _distance.current_distance))
         {
+
             begin_time = now_time;
             _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE;
-            mavlink_log_critical(&_mavlink_log_pub, "obstacle avoidance test");
-        }else if ((now_time - begin_time) < _parameters.straight_time)
+
+        }else if ((now_time - begin_time) < _parameters.avoid_time)
         {
-            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE_STRAIGHT;
+            _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE;
+        }else if ((now_time - begin_time) < _parameters.avoid_time + _parameters.straight_time)
+        {
+            if (abs(_distance.current_distance-256) < 0.000001)
+            {
+                _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE;
+                begin_time = now_time - _parameters.avoid_time / 2;
+            }else
+            {
+                _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_AVOIDANCE_STRAIGHT;
+            }
         }
         else
         {
